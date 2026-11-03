@@ -26,7 +26,15 @@
     <h2>Recent Expenses</h2>
         <h3>Expenses Summary</h3>
         <table id="expenses-table">
-            
+            <thead>
+                <tr>
+                    <th>Expense</th>
+                    <th>Amount</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
         </table>
             
     <h2>Add a New Expense</h2>
@@ -58,6 +66,7 @@
             <br><br>
 
             <button type="submit">Add Expense</button>  
+            <button type="button" id="cancel-edit" hidden>Cancel Edit</button>
         </form>
 
     <h2>Expense Categories</h2>
