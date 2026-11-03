@@ -1,14 +1,14 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
+from datetime import date
+from pydantic import BaseModel, Field
 
 app = FastAPI()
 
 class ExpenseCreate(BaseModel):
-    name: str
-    amount: float
-    category: str
-    date: str
+    name: str = Field(min_length=1, max_length=100)
+    amount: float = Field(gt=0)
+    category: str = Field(min_length=1)
+    date: date
 
 @app.get("/")
 def home():
