@@ -1,4 +1,4 @@
-
+import "./App.css";
 import { useEffect, useState } from "react";
 
 type Expense = {
@@ -39,6 +39,20 @@ function App() {
     0
   );
   const balance = income - totalExpenses;
+  
+  const spendingByCategory = filteredExpenses.reduce<Record<string, number>>(
+    (totals, expense) => {
+      totals[expense.category] =
+        (totals[expense.category] ?? 0) + expense.amount;
+
+      return totals;
+    },
+    {}
+  );
+
+  const categoryData = Object.entries(spendingByCategory).sort(
+    ([, amountA], [, amountB]) => amountB - amountA
+  );
 
   useEffect(() => {
     async function loadExpenses() {
@@ -185,29 +199,92 @@ function App() {
 
   return (
     <main>
-      <h1>My Personal Finance Tracker</h1>
-      <p>Take control of your money.</p>
+      <header className="dashboard-header">
+        <div>
+        <h1>My Personal Finance Tracker</h1>
+        <p>Take control of your money.</p>
+        </div>
 
-      <h2>Dashboard</h2>
+        <span className="dashboard-label">Dashboard</span>
+      </header>
 
       <section>
         <h3>Monthly Overview</h3>
-        <label htmlFor="selected-month">Select month: </label>
-        <input
-          type="month"
-          id="selected-month"
-          value={selectedMonth}
-          onChange={(event) => setSelectedMonth(event.target.value)}
-        />
-        <p>Total Income: ${income.toFixed(2)}</p>
-        <p>Total Expenses: ${totalExpenses.toFixed(2)}</p>
-        <p>Balance: ${balance.toFixed(2)}</p>
+       
+        <div className="month-selector">
+          <label htmlFor="selected-month">Select month</label>
+          <input
+            type="month"
+            id="selected-month"
+            value={selectedMonth}
+            onChange={(event) => setSelectedMonth(event.target.value)}
+          />
+        </div>
+
+        <div className="summary-grid">
+          <div className="summary-card">
+            <h3>Income</h3>
+            <p className="income-value">${income.toFixed(2)}</p>
+          </div>
+
+          <div className="summary-card">
+            <h3>Expenses</h3>
+            <p className="expense-value">${totalExpenses.toFixed(2)}</p>
+          </div>
+
+          <div className="summary-card">
+            <h3>Balance</h3>
+            <p className="balance-value">${balance.toFixed(2)}</p>
+          </div>
+        </div>
+
       </section>
 
-      <section>
-        <h2>{editingExpenseId === null ? "Add Expense" : "Edit Expense"}</h2>
+      <section className="category-section">
+        <h2>Spending by Category</h2>
 
-        <form onSubmit={handleSaveExpense}>
+        {categoryData.length === 0 ? (
+          <p>No expenses for this month.</p>
+        ) : (
+          <div className="category-list">
+            {categoryData.map(([categoryName, categoryTotal]) => {
+              const percentage =
+                totalExpenses > 0
+                  ? (categoryTotal / totalExpenses) * 100
+                  : 0;
+
+              return (
+                <div className="category-item" key={categoryName}>
+                  <div className="category-details">
+                    <span>{categoryName}</span>
+                    <span>
+                      ${categoryTotal.toFixed(2)} ({percentage.toFixed(1)}%)
+                    </span>
+                  </div>
+
+                  <div
+                    className="category-bar-track"
+                    role="progressbar"
+                    aria-label={`${categoryName} share of spending`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={percentage}
+                  >
+                    <div
+                      className="category-bar-fill"
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="expense-form-section">
+        <h2>{editingExpenseId === null ? "Add Expense" : "Edit Expense"}</h2>
+        <form className="expense-form" onSubmit={handleSaveExpense}>
           <div>
             <label htmlFor="expense-name">Name: </label>
             <input
@@ -269,7 +346,7 @@ function App() {
         </form>
       </section>
 
-      <section>
+      <section className="expense-list-section">
         <h3>Recent Expenses</h3>
 
         {error && <p role="alert">{error}</p>}
@@ -277,7 +354,7 @@ function App() {
         {filteredExpenses.length === 0 && !error ? (
           <p>No expenses found.</p>
         ) : (
-          <ul>
+          <ul className="expense-list">
             {filteredExpenses.map((expense) => (
              <li key={expense.id}>
                 {expense.name} — ${expense.amount.toFixed(2)}
@@ -286,6 +363,7 @@ function App() {
                 {" "}
                 <button
                   type="button"
+                  className="edit-button"
                   onClick={() => handleEditExpense(expense)}
                 >
                   Edit
@@ -293,6 +371,7 @@ function App() {
                 {" "}
                 <button
                   type="button"
+                  className="delete-button"
                   onClick={() => handleDeleteExpense(expense.id)}
                 >
                   Delete
