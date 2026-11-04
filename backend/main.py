@@ -1,8 +1,19 @@
-from fastapi import FastAPI, HTTPException
 from datetime import date
+from typing import Annotated
+
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from backend.database import Base, engine, get_db
+from backend.models import Expense
 
 app = FastAPI()
+
+# Create database tables if they don't exist.
+Base.metadata.create_all(bind=engine)
+
 
 class ExpenseCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
@@ -10,75 +21,79 @@ class ExpenseCreate(BaseModel):
     category: str = Field(min_length=1)
     date: date
 
+
+class ExpenseResponse(ExpenseCreate):
+    id: int
+
+    model_config = {"from_attributes": True}
+
+
+from typing import Annotated, TypeAlias
+
+DBSession: TypeAlias = Annotated[Session, Depends(get_db)]
+
+
 @app.get("/")
 def home():
     return {"message": "Personal Finance Tracker API"}
 
-expenses = [
-    {
-        "id": 1,
-        "name": "Groceries",
-        "amount": 45.50,
-        "category": "food",
-        "date": "2026-11-03"
-    },
-    {
-        "id": 2,
-        "name": "Bus ticket",
-        "amount": 3.00,
-        "category": "transport",
-        "date": "2026-11-03"
-    }
-]
 
-@app.get("/expenses")
-def get_expenses():
-    return expenses
+@app.get("/expenses", response_model=list[ExpenseResponse])
+def get_expenses(db: DBSession):
+    return db.scalars(select(Expense).order_by(Expense.id)).all()
 
-@app.post("/expenses", status_code=201)
-def create_expense(expense: ExpenseCreate):
-    new_expense = expense.model_dump()
 
-    new_expense["id"] = max(
-        (item["id"] for item in expenses),
-        default=0
-    ) + 1
+@app.post("/expenses", response_model=ExpenseResponse, status_code=201)
+def create_expense(expense: ExpenseCreate, db: DBSession):
+    new_expense = Expense(**expense.model_dump())
 
-    expenses.append(new_expense)
+    db.add(new_expense)
+    db.commit()
+    db.refresh(new_expense)
 
     return new_expense
 
-@app.get("/expenses/{expense_id}")
-def get_expense(expense_id: int):
-    for expense in expenses:
-        if expense["id"] == expense_id:
-            return expense
 
-    raise HTTPException(
-        status_code=404,
-        detail="Expense not found"
-    )
+@app.get("/expenses/{expense_id}", response_model=ExpenseResponse)
+def get_expense(expense_id: int, db: DBSession):
+    expense = db.get(Expense, expense_id)
 
-@app.put("/expenses/{expense_id}")
-def update_expense(expense_id: int, updated_expense: ExpenseCreate):
-    for expense in expenses:
-        if expense["id"] == expense_id:
-            expense.update(updated_expense.model_dump())
-            return expense
+    if expense is None:
+        raise HTTPException(status_code=404, detail="Expense not found")
 
-    raise HTTPException(
-        status_code=404,
-        detail="Expense not found"
-    )
+    return expense
 
 
-@app.delete("/expenses/{expense_id}")
-def delete_expense(expense_id: int):
-    for index, expense in enumerate(expenses):
-        if expense["id"] == expense_id:
-            return expenses.pop(index)
+@app.put("/expenses/{expense_id}", response_model=ExpenseResponse)
+def update_expense(
+    expense_id: int,
+    updated_expense: ExpenseCreate,
+    db: DBSession
+):
+    expense = db.get(Expense, expense_id)
 
-    raise HTTPException(
-        status_code=404,
-        detail="Expense not found"
-    )
+    if expense is None:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    for field, value in updated_expense.model_dump().items():
+        setattr(expense, field, value)
+
+    db.commit()
+    db.refresh(expense)
+
+    return expense
+
+
+@app.delete("/expenses/{expense_id}", response_model=ExpenseResponse)
+def delete_expense(expense_id: int, db: DBSession):
+    expense = db.get(Expense, expense_id)
+
+    if expense is None:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    response = ExpenseResponse.model_validate(expense)
+
+    db.delete(expense)
+    db.commit()
+
+    return response
