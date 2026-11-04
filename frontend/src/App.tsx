@@ -77,7 +77,7 @@ function App() {
  
   async function handleSaveExpense(
     event: React.SubmitEvent<HTMLFormElement>
-  ) {
+    ) {
     event.preventDefault();
 
     const expenseName = name.trim();
@@ -146,37 +146,37 @@ function App() {
   }
   
   async function handleDeleteExpense(expenseId: number) {
-  const confirmed = window.confirm(
-    "Are you sure you want to delete this expense?"
-  );
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this expense?"
+    );
 
-  if (!confirmed) {
-    return;
-  }
+    if (!confirmed) {
+      return;
+    }
 
-  try {
-    setError("");
+    try {
+      setError("");
 
-    const response = await fetch(
-      `${API_URL}/expenses/${expenseId}`,
-      {
-        method: "DELETE",
+      const response = await fetch(
+        `${API_URL}/expenses/${expenseId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
       }
-    );
 
-    if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
-    }
-
-    setExpenses((previousExpenses) =>
-      previousExpenses.filter(
-        (expense) => expense.id !== expenseId
-      )
-    );
-    } catch (err) {
-      console.error("Could not delete expense:", err);
-      setError("Could not delete expense. Please try again.");
-    }
+      setExpenses((previousExpenses) =>
+        previousExpenses.filter(
+          (expense) => expense.id !== expenseId
+        )
+      );
+      } catch (err) {
+        console.error("Could not delete expense:", err);
+        setError("Could not delete expense. Please try again.");
+      }
   }
 
   function handleEditExpense(expense: Expense) {
