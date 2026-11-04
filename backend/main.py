@@ -9,7 +9,20 @@ from sqlalchemy.orm import Session
 from backend.database import Base, engine, get_db
 from backend.models import Expense
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type"],
+)
 
 # Create database tables if they don't exist.
 Base.metadata.create_all(bind=engine)

@@ -1,6 +1,6 @@
 const expenseInput = document.getElementById("expense");
 const expenseForm = document.getElementById("expense-form");
-let expenses = JSON.parse(localStorage.getItem("expenses")) || [];
+let expenses = [];
 const expensesTable = document.getElementById("expenses-table");
 
 const monthInput = document.getElementById("selected-month");
@@ -44,15 +44,33 @@ function addExpenseToTable(expense) {
     actionsCell.appendChild(editButton);
 }
 
-function deleteExpense(expenseToDelete) {
-    expenses = expenses.filter(function (expense) {
-        return expense !== expenseToDelete;
-    });
+async function deleteExpense(expenseToDelete) {
+    const confirmed = confirm(
+        `Are you sure you want to delete "${expenseToDelete.name}"?`
+    );
 
-    localStorage.setItem("expenses", JSON.stringify(expenses));
+    if (!confirmed) {
+        return;
+    }
 
-    renderExpenses();
-    updateTotalExpenses();
+    try {
+        const response = await fetch(
+            `${API_URL}/expenses/${expenseToDelete.id}`,
+            {
+                method: "DELETE"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`Failed to delete expense: ${response.status}`);
+        }
+
+        await loadExpenses();
+
+    } catch (error) {
+        console.error("Error deleting expense:", error);
+        alert("Could not delete expense. Please try again.");
+    }
 }
 
 function editExpense(expense) {
@@ -99,9 +117,6 @@ function updateTotalExpenses() {
         `$${balance.toFixed(2)}`;
 }
 
-renderExpenses();
-updateTotalExpenses();
-
 cancelEditButton.addEventListener("click", function () {
     editingExpense = null;
     expenseForm.reset();
@@ -114,7 +129,7 @@ monthInput.addEventListener("change", function () {
     updateTotalExpenses();
 });
 
-expenseForm.addEventListener("submit", function (event) {
+expenseForm.addEventListener("submit", async function (event) {
     event.preventDefault();
 
     const expenseData = {
@@ -126,23 +141,62 @@ expenseForm.addEventListener("submit", function (event) {
 
     if (expenseData.name === "" ||
         !Number.isFinite(expenseData.amount) ||
-        expenseData.amount < 0) {
-        alert("Please enter a valid expense.");
+        expenseData.amount <= 0) {
+            alert("Please enter a valid expense.");
+            return;
+        }
+
+    if (editingExpense !== null) {
+    try {
+        const response = await fetch(
+            `${API_URL}/expenses/${editingExpense.id}`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(expenseData)
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`Failed to update expense: ${response.status}`);
+        }
+
+        await loadExpenses();
+
+        expenseForm.reset();
+        editingExpense = null;
+        submitButton.textContent = "Add Expense";
+        cancelEditButton.hidden = true;
+
+        } catch (error) {
+           console.error("Error updating expense:", error);
+          alert("Could not update expense. Please try again.");
+        }
+
         return;
     }
 
-    if (editingExpense !== null) {
-        // Update the existing expense object
-        editingExpense.name = expenseData.name;
-        editingExpense.amount = expenseData.amount;
-        editingExpense.category = expenseData.category;
-        editingExpense.date = expenseData.date;
-    } else {
-        // Create a new expense
-        expenses.push(expenseData);
-    }
+    try {
+        const response = await fetch(`${API_URL}/expenses`, {
+            method: "POST",
+            headers: {
+            "Content-Type": "application/json"
+            },
+            body: JSON.stringify(expenseData)
+            });
 
-    localStorage.setItem("expenses", JSON.stringify(expenses));
+        if (!response.ok) {
+            throw new Error(`Failed to save expense: ${response.status}`);
+        }
+
+        await loadExpenses();
+    } catch (error) {
+        console.error("Error saving expense:", error);
+        alert("Could not save expense. Please try again.");
+        return;
+    }
 
     renderExpenses();
     updateTotalExpenses();
@@ -153,5 +207,25 @@ expenseForm.addEventListener("submit", function (event) {
     cancelEditButton.hidden = true;
 });
 
+const API_URL = "http://127.0.0.1:8000";
 
+async function loadExpenses() {
+    try {
+        const response = await fetch(`${API_URL}/expenses`);
 
+        if (!response.ok) {
+            throw new Error(`HTTP error: ${response.status}`);
+        }
+
+        expenses = await response.json();
+
+        console.log("Expenses loaded from SQLite:", expenses);
+
+        renderExpenses();
+        updateTotalExpenses();
+    } catch (error) {
+        console.error("Could not load expenses:", error);
+    }
+}
+
+loadExpenses();
