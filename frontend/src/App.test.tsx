@@ -425,3 +425,78 @@ test("sends a PUT request when editing an expense", async () => {
     }),
   );
 });
+
+test("shows an error and stays on login after incorrect credentials", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({
+        detail: "Incorrect email or password",
+      }),
+    }),
+  );
+
+  render(<App />);
+
+  fireEvent.change(screen.getByLabelText("Email"), {
+    target: { value: "test@example.com" },
+  });
+
+  fireEvent.change(screen.getByLabelText("Password"), {
+    target: { value: "wrong-password" },
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+  const errorMessage = await screen.findByRole("alert");
+
+  expect(errorMessage.textContent).toBe(
+    "Login failed. Please check your email and password.",
+  );
+
+  expect(screen.getByRole("heading", { name: "Sign in" })).toBeTruthy();
+
+  expect(
+    screen.queryByRole("heading", {
+      name: /my personal finance tracker/i,
+    }),
+  ).toBeNull();
+});
+
+test("logging out returns the user to the sign-in screen", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes("/login")) {
+        return {
+          ok: true,
+          json: async () => ({
+            access_token: "test-token",
+            token_type: "bearer",
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => [],
+      };
+    }),
+  );
+
+  render(<App />);
+
+  await signInForTest();
+
+  fireEvent.click(screen.getByRole("button", { name: "Logout" }));
+
+  expect(screen.getByRole("heading", { name: "Sign in" })).toBeTruthy();
+
+  expect(
+    screen.queryByRole("heading", {
+      name: /my personal finance tracker/i,
+    }),
+  ).toBeNull();
+});
