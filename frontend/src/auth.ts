@@ -1,4 +1,5 @@
-const API_BASE_URL = "http://127.0.0.1:8000";
+
+import { API_URL } from "./config";
 
 export type LoginResponse = {
   access_token: string;
@@ -9,7 +10,7 @@ export async function loginUser(
   email: string,
   password: string
 ): Promise<LoginResponse> {
-  const response = await fetch(`${API_BASE_URL}/login`, {
+  const response = await fetch(`${API_URL}/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

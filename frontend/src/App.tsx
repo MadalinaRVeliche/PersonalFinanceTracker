@@ -1,6 +1,7 @@
 import "./App.css";
 import { useEffect, useState } from "react";
 import Login from "./Login";
+import { API_URL } from "./config";
 
 type Expense = {
   id: number;
@@ -9,8 +10,6 @@ type Expense = {
   category: string;
   date: string;
 };
-
-const API_URL = "http://127.0.0.1:8000";
 
 function App() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -33,15 +32,15 @@ function App() {
   const income = 3000;
 
   const filteredExpenses = expenses.filter((expense) =>
-    expense.date.startsWith(selectedMonth)
+    expense.date.startsWith(selectedMonth),
   );
 
   const totalExpenses = filteredExpenses.reduce(
     (total, expense) => total + expense.amount,
-    0
+    0,
   );
   const balance = income - totalExpenses;
-  
+
   const spendingByCategory = filteredExpenses.reduce<Record<string, number>>(
     (totals, expense) => {
       totals[expense.category] =
@@ -49,11 +48,11 @@ function App() {
 
       return totals;
     },
-    {}
+    {},
   );
 
   const categoryData = Object.entries(spendingByCategory).sort(
-    ([, amountA], [, amountB]) => amountB - amountA
+    ([, amountA], [, amountB]) => amountB - amountA,
   );
 
   useEffect(() => {
@@ -64,7 +63,7 @@ function App() {
             Authorization: `Bearer ${accessToken}`,
           },
         });
-       
+
         if (response.status === 401) {
           setAccessToken(null);
           setExpenses([]);
@@ -79,17 +78,14 @@ function App() {
         const data: Expense[] = await response.json();
         setExpenses(data);
       } catch (err) {
-          console.error("Could not load expenses:", err);
-          setError("Could not load expenses from FastAPI.");
+        console.error("Could not load expenses:", err);
+        setError("Could not load expenses from FastAPI.");
       }
     }
     loadExpenses();
   }, [accessToken]);
 
- 
-  async function handleSaveExpense(
-    event: React.SubmitEvent<HTMLFormElement>
-    ) {
+  async function handleSaveExpense(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const expenseName = name.trim();
@@ -144,14 +140,11 @@ function App() {
       if (isEditing) {
         setExpenses((previousExpenses) =>
           previousExpenses.map((expense) =>
-            expense.id === savedExpense.id ? savedExpense : expense
-          )
+            expense.id === savedExpense.id ? savedExpense : expense,
+          ),
         );
       } else {
-        setExpenses((previousExpenses) => [
-          ...previousExpenses,
-          savedExpense,
-        ]);
+        setExpenses((previousExpenses) => [...previousExpenses, savedExpense]);
       }
 
       setEditingExpenseId(null);
@@ -164,10 +157,10 @@ function App() {
       setError("Could not save expense. Please try again.");
     }
   }
-  
+
   async function handleDeleteExpense(expenseId: number) {
     const confirmed = window.confirm(
-      "Are you sure you want to delete this expense?"
+      "Are you sure you want to delete this expense?",
     );
 
     if (!confirmed) {
@@ -177,15 +170,12 @@ function App() {
     try {
       setError("");
 
-      const response = await fetch(
-        `${API_URL}/expenses/${expenseId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
+      const response = await fetch(`${API_URL}/expenses/${expenseId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
 
       if (response.status === 401) {
         setAccessToken(null);
@@ -193,20 +183,18 @@ function App() {
         setError("");
         return;
       }
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error: ${response.status}`);
       }
 
       setExpenses((previousExpenses) =>
-        previousExpenses.filter(
-          (expense) => expense.id !== expenseId
-        )
+        previousExpenses.filter((expense) => expense.id !== expenseId),
       );
-      } catch (err) {
-        console.error("Could not delete expense:", err);
-        setError("Could not delete expense. Please try again.");
-      }
+    } catch (err) {
+      console.error("Could not delete expense:", err);
+      setError("Could not delete expense. Please try again.");
+    }
   }
 
   function handleEditExpense(expense: Expense) {
@@ -226,11 +214,11 @@ function App() {
     setDate("");
     setError("");
   }
-  
+
   if (!accessToken) {
     return <Login onLogin={setAccessToken} />;
   }
-  
+
   return (
     <main>
       <header className="dashboard-header">
@@ -256,7 +244,7 @@ function App() {
       </header>
       <section>
         <h3>Monthly Overview</h3>
-       
+
         <div className="month-selector">
           <label htmlFor="selected-month">Select month</label>
           <input
@@ -283,7 +271,6 @@ function App() {
             <p className="balance-value">${balance.toFixed(2)}</p>
           </div>
         </div>
-
       </section>
 
       <section className="category-section">
@@ -295,9 +282,7 @@ function App() {
           <div className="category-list">
             {categoryData.map(([categoryName, categoryTotal]) => {
               const percentage =
-                totalExpenses > 0
-                  ? (categoryTotal / totalExpenses) * 100
-                  : 0;
+                totalExpenses > 0 ? (categoryTotal / totalExpenses) * 100 : 0;
 
               return (
                 <div className="category-item" key={categoryName}>
@@ -384,11 +369,11 @@ function App() {
           <button type="submit">
             {editingExpenseId === null ? "Add Expense" : "Save Changes"}
           </button>
-            {editingExpenseId !== null && (
+          {editingExpenseId !== null && (
             <button type="button" onClick={handleCancelEdit}>
               Cancel Edit
             </button>
-        )}
+          )}
         </form>
       </section>
 
@@ -402,19 +387,16 @@ function App() {
         ) : (
           <ul className="expense-list">
             {filteredExpenses.map((expense) => (
-             <li key={expense.id}>
-                {expense.name} — ${expense.amount.toFixed(2)}
-                {" "}({expense.category}, {expense.date})
-
-                {" "}
+              <li key={expense.id}>
+                {expense.name} — ${expense.amount.toFixed(2)} (
+                {expense.category}, {expense.date}){" "}
                 <button
                   type="button"
                   className="edit-button"
                   onClick={() => handleEditExpense(expense)}
                 >
                   Edit
-                </button>
-                {" "}
+                </button>{" "}
                 <button
                   type="button"
                   className="delete-button"
