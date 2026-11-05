@@ -39,38 +39,46 @@ app.add_middleware(
 # Create database tables if they don't exist.
 Base.metadata.create_all(bind=engine)
 
+
 class ExpenseCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     amount: float = Field(gt=0)
     category: str = Field(min_length=1)
     date: date
 
+
 class ExpenseResponse(ExpenseCreate):
     id: int
 
     model_config = {"from_attributes": True}
 
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    
+
+
 class UserResponse(BaseModel):
     id: int
     email: str
 
     model_config = {"from_attributes": True}
 
+
 class UserLogin(BaseModel):
     email: EmailStr
-    password: str    
+    password: str
+
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-        
+
+
 from typing import Annotated, TypeAlias
 
 DBSession: TypeAlias = Annotated[Session, Depends(get_db)]
+
 
 def get_current_user(
     db: DBSession,
@@ -106,9 +114,11 @@ def get_current_user(
 
     return user
 
+
 @app.get("/")
 def home():
     return {"message": "Personal Finance Tracker API"}
+
 
 @app.get("/expenses", response_model=list[ExpenseResponse])
 def get_expenses(
@@ -116,11 +126,10 @@ def get_expenses(
     current_user: Annotated[User, Depends(get_current_user)],
 ):
     return db.scalars(
-        select(Expense)
-        .where(Expense.owner_id == current_user.id)
-        .order_by(Expense.id)
+        select(Expense).where(Expense.owner_id == current_user.id).order_by(Expense.id)
     ).all()
-    
+
+
 @app.post("/expenses", response_model=ExpenseResponse, status_code=201)
 def create_expense(
     expense: ExpenseCreate,
@@ -137,6 +146,7 @@ def create_expense(
     db.refresh(new_expense)
 
     return new_expense
+
 
 @app.get("/expenses/{expense_id}", response_model=ExpenseResponse)
 def get_expense(
@@ -158,6 +168,7 @@ def get_expense(
         )
 
     return expense
+
 
 @app.put("/expenses/{expense_id}", response_model=ExpenseResponse)
 def update_expense(
@@ -187,6 +198,7 @@ def update_expense(
 
     return expense
 
+
 @app.delete("/expenses/{expense_id}", response_model=ExpenseResponse)
 def delete_expense(
     expense_id: int,
@@ -213,22 +225,15 @@ def delete_expense(
 
     return response
 
+
 @app.post("/register", response_model=UserResponse, status_code=201)
 def register_user(user: UserCreate, db: DBSession):
-    existing_user = db.scalar(
-        select(User).where(User.email == user.email)
-    )
+    existing_user = db.scalar(select(User).where(User.email == user.email))
 
     if existing_user is not None:
-        raise HTTPException(
-            status_code=409,
-            detail="Email already registered"
-        )
+        raise HTTPException(status_code=409, detail="Email already registered")
 
-    new_user = User(
-        email=user.email,
-        hashed_password=hash_password(user.password)
-    )
+    new_user = User(email=user.email, hashed_password=hash_password(user.password))
 
     db.add(new_user)
     db.commit()
@@ -236,29 +241,26 @@ def register_user(user: UserCreate, db: DBSession):
 
     return new_user
 
+
 @app.post("/login", response_model=TokenResponse)
 def login_user(credentials: UserLogin, db: DBSession):
-    user = db.scalar(
-        select(User).where(User.email == credentials.email)
-    )
+    user = db.scalar(select(User).where(User.email == credentials.email))
 
-    if user is None or not verify_password(
-        credentials.password, user.hashed_password
-    ):
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid email or password"
-        )
+    if user is None or not verify_password(credentials.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
 
     access_token = create_access_token(user.id)
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
+    return {"access_token": access_token, "token_type": "bearer"}
+
 
 @app.get("/me", response_model=UserResponse)
 def read_current_user(
     current_user: Annotated[User, Depends(get_current_user)],
 ):
     return current_user
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
