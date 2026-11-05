@@ -1,0 +1,14 @@
+.venv/
+.git/
+.github/
+.env
+**/.env
+**/__pycache__/
+**/.pytest_cache/
+**/*.pyc
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+frontend/node_modules/
+frontend/playwright-report/
+frontend/test-results/
