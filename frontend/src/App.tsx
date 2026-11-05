@@ -1,5 +1,6 @@
 import "./App.css";
 import { useEffect, useState } from "react";
+import Login from "./Login";
 
 type Expense = {
   id: number;
@@ -12,6 +13,7 @@ type Expense = {
 const API_URL = "http://127.0.0.1:8000";
 
 function App() {
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [error, setError] = useState("");
 
@@ -57,7 +59,18 @@ function App() {
   useEffect(() => {
     async function loadExpenses() {
       try {
-        const response = await fetch(`${API_URL}/expenses`);
+        const response = await fetch(`${API_URL}/expenses`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+       
+        if (response.status === 401) {
+          setAccessToken(null);
+          setExpenses([]);
+          setError("");
+          return;
+        }
 
         if (!response.ok) {
           throw new Error(`HTTP error: ${response.status}`);
@@ -66,13 +79,12 @@ function App() {
         const data: Expense[] = await response.json();
         setExpenses(data);
       } catch (err) {
-        console.error("Could not load expenses:", err);
-        setError("Could not load expenses from FastAPI.");
+          console.error("Could not load expenses:", err);
+          setError("Could not load expenses from FastAPI.");
       }
     }
-
     loadExpenses();
-  }, []);
+  }, [accessToken]);
 
  
   async function handleSaveExpense(
@@ -106,6 +118,7 @@ function App() {
         method: isEditing ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           name: expenseName,
@@ -114,6 +127,13 @@ function App() {
           date,
         }),
       });
+
+      if (response.status === 401) {
+        setAccessToken(null);
+        setExpenses([]);
+        setError("");
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error: ${response.status}`);
@@ -161,9 +181,19 @@ function App() {
         `${API_URL}/expenses/${expenseId}`,
         {
           method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
         }
       );
 
+      if (response.status === 401) {
+        setAccessToken(null);
+        setExpenses([]);
+        setError("");
+        return;
+      }
+      
       if (!response.ok) {
         throw new Error(`HTTP error: ${response.status}`);
       }
@@ -196,18 +226,34 @@ function App() {
     setDate("");
     setError("");
   }
-
+  
+  if (!accessToken) {
+    return <Login onLogin={setAccessToken} />;
+  }
+  
   return (
     <main>
       <header className="dashboard-header">
         <div>
-        <h1>My Personal Finance Tracker</h1>
-        <p>Take control of your money.</p>
+          <h1>My Personal Finance Tracker</h1>
+          <p>Take control of your money.</p>
         </div>
 
-        <span className="dashboard-label">Dashboard</span>
-      </header>
+        <div>
+          <span className="dashboard-label">Dashboard</span>
 
+          <button
+            type="button"
+            onClick={() => {
+              setAccessToken(null);
+              setExpenses([]);
+              setError("");
+            }}
+          >
+            Logout
+          </button>
+        </div>
+      </header>
       <section>
         <h3>Monthly Overview</h3>
        

@@ -29,3 +29,4 @@ dist/
 Thumbs.db
 desktop.ini
 backend/finance.db
+backend/finance_backup.db

@@ -38,7 +38,36 @@ def client():
 
     try:
         with TestClient(app) as test_client:
-            yield test_client
+            # Register a user in the temporary test database.
+            register_response = test_client.post(
+                "/register",
+                json={
+                    "email": "test@example.com",
+                    "password": "test-password-123",
+                },
+            )
+        assert register_response.status_code in (200, 201)
+
+        # Log in and retrieve a JWT access token.
+        login_response = test_client.post(
+            "/login",
+            json={
+                "email": "test@example.com",
+                "password": "test-password-123",
+            },
+        )
+        assert login_response.status_code == 200
+
+        token = login_response.json()["access_token"]
+
+        # Authenticate all subsequent expense requests.
+        test_client.headers.update(
+            {
+                "Authorization": f"Bearer {token}",
+            }
+        )
+
+        yield test_client
     finally:
         app.dependency_overrides.clear()
         Base.metadata.drop_all(bind=test_engine)
@@ -57,7 +86,7 @@ def test_create_expense(client):
         "name": "Groceries",
         "amount": 45.50,
         "category": "food",
-        "date": "2026-11-04"
+        "date": "2026-11-04",
     }
 
     response = client.post("/expenses", json=new_expense)
@@ -83,7 +112,7 @@ def test_reject_negative_amount(client):
         "name": "Coffee",
         "amount": -5.50,
         "category": "food",
-        "date": "2026-11-03"
+        "date": "2026-11-03",
     }
 
     response = client.post("/expenses", json=invalid_expense)
@@ -97,7 +126,7 @@ def test_reject_invalid_date(client):
         "name": "Coffee",
         "amount": 5.50,
         "category": "food",
-        "date": "2026-13-45"
+        "date": "2026-13-45",
     }
 
     response = client.post("/expenses", json=invalid_expense)
@@ -118,13 +147,10 @@ def test_update_expense(client):
         "name": "Groceries",
         "amount": 45.50,
         "category": "food",
-        "date": "2026-11-04"
+        "date": "2026-11-04",
     }
 
-    create_response = client.post(
-        "/expenses",
-        json=original_expense
-    )
+    create_response = client.post("/expenses", json=original_expense)
     assert create_response.status_code == 201
 
     expense_id = create_response.json()["id"]
@@ -133,13 +159,10 @@ def test_update_expense(client):
         "name": "Updated groceries",
         "amount": 75.00,
         "category": "food",
-        "date": "2026-11-03"
+        "date": "2026-11-03",
     }
 
-    response = client.put(
-        f"/expenses/{expense_id}",
-        json=updated_data
-    )
+    response = client.put(f"/expenses/{expense_id}", json=updated_data)
 
     assert response.status_code == 200
     assert response.json()["name"] == "Updated groceries"
@@ -157,13 +180,10 @@ def test_delete_expense(client):
         "name": "Temporary expense",
         "amount": 10.00,
         "category": "other",
-        "date": "2026-11-03"
+        "date": "2026-11-03",
     }
 
-    create_response = client.post(
-        "/expenses",
-        json=new_expense
-    )
+    create_response = client.post("/expenses", json=new_expense)
     assert create_response.status_code == 201
 
     expense_id = create_response.json()["id"]
