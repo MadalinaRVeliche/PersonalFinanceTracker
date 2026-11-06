@@ -8,6 +8,26 @@ The application provides authenticated users with a way to record financial tran
 
 **API documentation:** https://personal-finance-api-m6we.onrender.com/docs
 
+## Application Preview
+
+### Financial Dashboard
+
+![Personal Finance Tracker dashboard showing monthly income, expenses, balance, and spending by category](docs/screenshots/dashboard.png)
+
+_Monthly financial overview with income, expenses, balance, and spending breakdown. All financial data shown is fictional._
+
+### Expense Management
+
+![Expense management interface showing the expense form and transactions with edit and delete actions](docs/screenshots/expenses.png)
+
+_Create, view, edit, and delete expenses with categories, amounts, and dates._
+
+### Income Management
+
+![Income management interface showing the income form and saved income records](docs/screenshots/incomes.png)
+
+_Track income sources and manage income records through the application interface._
+
 ## Features
 
 ### Authentication and security
