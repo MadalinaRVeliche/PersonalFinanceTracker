@@ -2,7 +2,7 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -46,6 +46,13 @@ class ExpenseCreate(BaseModel):
     category: str = Field(min_length=1)
     date: date
 
+    @field_validator("date")
+    @classmethod
+    def validate_date(cls, value: date) -> date:
+        if value > date.today():
+            raise ValueError("Expense date cannot be in the future.")
+        return value
+
 
 class ExpenseResponse(ExpenseCreate):
     id: int
@@ -57,6 +64,13 @@ class IncomeCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
     date: date
+
+    @field_validator("date")
+    @classmethod
+    def validate_date(cls, value: date) -> date:
+        if value > date.today():
+            raise ValueError("Income date cannot be in the future.")
+        return value
 
 
 class IncomeResponse(IncomeCreate):

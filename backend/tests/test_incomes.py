@@ -1,10 +1,9 @@
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-
+from datetime import date, timedelta
 from backend.database import Base, get_db
 from backend.main import app
 
@@ -52,9 +51,7 @@ def login(client, email, password="secure-password-123"):
     )
     assert response.status_code == 200
 
-    return {
-        "Authorization": f"Bearer {response.json()['access_token']}"
-    }
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
 
 def sample_income():
@@ -67,17 +64,13 @@ def sample_income():
 
 def test_income_requires_authentication(client):
     assert client.get("/incomes").status_code == 401
-    assert client.post(
-        "/incomes", json=sample_income()
-    ).status_code == 401
+    assert client.post("/incomes", json=sample_income()).status_code == 401
 
 
 def test_create_and_list_income(client):
     headers = login(client, "alice@example.com")
 
-    response = client.post(
-        "/incomes", json=sample_income(), headers=headers
-    )
+    response = client.post("/incomes", json=sample_income(), headers=headers)
 
     assert response.status_code == 201
     assert response.json()["name"] == "Salary"
@@ -93,9 +86,7 @@ def test_create_and_list_income(client):
 def test_update_income(client):
     headers = login(client, "alice@example.com")
 
-    response = client.post(
-        "/incomes", json=sample_income(), headers=headers
-    )
+    response = client.post("/incomes", json=sample_income(), headers=headers)
     income_id = response.json()["id"]
 
     updated = {
@@ -118,20 +109,14 @@ def test_update_income(client):
 def test_delete_income(client):
     headers = login(client, "alice@example.com")
 
-    response = client.post(
-        "/incomes", json=sample_income(), headers=headers
-    )
+    response = client.post("/incomes", json=sample_income(), headers=headers)
     income_id = response.json()["id"]
 
-    response = client.delete(
-        f"/incomes/{income_id}", headers=headers
-    )
+    response = client.delete(f"/incomes/{income_id}", headers=headers)
 
     assert response.status_code == 200
 
-    response = client.get(
-        f"/incomes/{income_id}", headers=headers
-    )
+    response = client.get(f"/incomes/{income_id}", headers=headers)
 
     assert response.status_code == 404
 
@@ -146,9 +131,7 @@ def test_reject_invalid_income_amount(client, amount):
     invalid = sample_income()
     invalid["amount"] = amount
 
-    response = client.post(
-        "/incomes", json=invalid, headers=headers
-    )
+    response = client.post("/incomes", json=invalid, headers=headers)
 
     assert response.status_code == 422
 
@@ -159,9 +142,7 @@ def test_reject_invalid_income_date(client):
     invalid = sample_income()
     invalid["date"] = "2026-13-45"
 
-    response = client.post(
-        "/incomes", json=invalid, headers=headers
-    )
+    response = client.post("/incomes", json=invalid, headers=headers)
 
     assert response.status_code == 422
 
@@ -170,9 +151,7 @@ def test_users_cannot_access_each_others_income(client):
     alice = login(client, "alice@example.com")
     bob = login(client, "bob@example.com")
 
-    response = client.post(
-        "/incomes", json=sample_income(), headers=alice
-    )
+    response = client.post("/incomes", json=sample_income(), headers=alice)
 
     assert response.status_code == 201
     income_id = response.json()["id"]
@@ -183,26 +162,74 @@ def test_users_cannot_access_each_others_income(client):
     assert response.json() == []
 
     # Bob cannot retrieve Alice's income directly.
-    assert client.get(
-        f"/incomes/{income_id}", headers=bob
-    ).status_code == 404
+    assert client.get(f"/incomes/{income_id}", headers=bob).status_code == 404
 
     # Bob cannot modify Alice's income.
-    assert client.put(
-        f"/incomes/{income_id}",
-        json=sample_income(),
-        headers=bob,
-    ).status_code == 404
+    assert (
+        client.put(
+            f"/incomes/{income_id}",
+            json=sample_income(),
+            headers=bob,
+        ).status_code
+        == 404
+    )
 
     # Bob cannot delete Alice's income.
-    assert client.delete(
-        f"/incomes/{income_id}", headers=bob
-    ).status_code == 404
+    assert client.delete(f"/incomes/{income_id}", headers=bob).status_code == 404
 
     # Alice's income still exists.
-    response = client.get(
-        f"/incomes/{income_id}", headers=alice
-    )
+    response = client.get(f"/incomes/{income_id}", headers=alice)
 
     assert response.status_code == 200
     assert response.json()["name"] == "Salary"
+
+
+def test_reject_future_income_date_on_create(client):
+    headers = login(client, "alice@example.com")
+
+    invalid_income = sample_income()
+    invalid_income["date"] = (date.today() + timedelta(days=1)).isoformat()
+
+    response = client.post(
+        "/incomes",
+        json=invalid_income,
+        headers=headers,
+    )
+
+    assert response.status_code == 422
+    assert client.get("/incomes", headers=headers).json() == []
+
+
+def test_reject_future_income_date_on_update(client):
+    headers = login(client, "alice@example.com")
+
+    original_income = sample_income()
+
+    create_response = client.post(
+        "/incomes",
+        json=original_income,
+        headers=headers,
+    )
+    assert create_response.status_code == 201
+
+    income_id = create_response.json()["id"]
+
+    updated_income = {
+        **original_income,
+        "date": (date.today() + timedelta(days=1)).isoformat(),
+    }
+
+    response = client.put(
+        f"/incomes/{income_id}",
+        json=updated_income,
+        headers=headers,
+    )
+
+    assert response.status_code == 422
+
+    saved_income = client.get(
+        f"/incomes/{income_id}",
+        headers=headers,
+    )
+    assert saved_income.status_code == 200
+    assert saved_income.json()["date"] == original_income["date"]

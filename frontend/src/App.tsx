@@ -45,6 +45,13 @@ function App() {
   const [incomeDate, setIncomeDate] = useState("");
   const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null);
 
+  const today = new Date();
+  const todayLocal = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+
   const filteredIncomes = incomes.filter((income) =>
     income.date.startsWith(selectedMonth),
   );
@@ -145,6 +152,11 @@ function App() {
   async function handleSaveExpense(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (date > todayLocal) {
+      setError("Expense date cannot be in the future.");
+      return;
+    }
+
     const expenseName = name.trim();
     const expenseAmount = Number(amount);
 
@@ -218,6 +230,11 @@ function App() {
 
   async function handleSaveIncome(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (incomeDate > todayLocal) {
+      setError("Income date cannot be in the future.");
+      return;
+    }
 
     const trimmedName = incomeName.trim();
     const numericAmount = Number(incomeAmount);
@@ -535,21 +552,24 @@ function App() {
             <input
               id="income-date"
               type="date"
+              max={todayLocal}
               value={incomeDate}
               onChange={(event) => setIncomeDate(event.target.value)}
               required
             />
           </div>
 
-          <button type="submit">
-            {editingIncomeId === null ? "Add Income" : "Save Income Changes"}
-          </button>
-
-          {editingIncomeId !== null && (
-            <button type="button" onClick={handleCancelIncomeEdit}>
-              Cancel Income Edit
+          <div className="form-actions">
+            <button type="submit">
+              {editingIncomeId === null ? "Add Income" : "Save Income Changes"}
             </button>
-          )}
+
+            {editingIncomeId !== null && (
+              <button type="button" onClick={handleCancelIncomeEdit}>
+                Cancel Income Edit
+              </button>
+            )}
+          </div>
         </form>
       </section>
 
@@ -630,20 +650,24 @@ function App() {
             <input
               id="expense-date"
               type="date"
+              max={todayLocal}
               value={date}
               onChange={(event) => setDate(event.target.value)}
               required
             />
           </div>
 
-          <button type="submit">
-            {editingExpenseId === null ? "Add Expense" : "Save Changes"}
-          </button>
-          {editingExpenseId !== null && (
-            <button type="button" onClick={handleCancelEdit}>
-              Cancel Edit
+          <div className="form-actions">
+            <button type="submit">
+              {editingExpenseId === null ? "Add Expense" : "Save Changes"}
             </button>
-          )}
+
+            {editingExpenseId !== null && (
+              <button type="button" onClick={handleCancelEdit}>
+                Cancel Edit
+              </button>
+            )}
+          </div>
         </form>
       </section>
 

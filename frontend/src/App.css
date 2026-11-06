@@ -290,3 +290,151 @@ main {
     flex-wrap: wrap;
   }
 }
+
+/* Dashboard UI improvements */
+
+/* Give each dashboard section breathing room */
+.expense-form-section,
+.expense-list-section,
+.category-section {
+  margin-bottom: 32px;
+}
+
+/* Consistent section headings */
+.expense-list-section h2,
+.expense-form-section h2,
+.category-section h2 {
+  margin-top: 0;
+  margin-bottom: 24px;
+  font-size: 22px;
+  color: #111827;
+}
+
+/* Keep form action buttons aligned */
+.expense-form > button {
+  width: fit-content;
+  min-width: 150px;
+  align-self: end;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+/* Save / Add button */
+.expense-form > button[type="submit"] {
+  background: #2563eb;
+  color: white;
+}
+
+.expense-form > button[type="submit"]:hover {
+  background: #1d4ed8;
+}
+
+/* Cancel edit button */
+.expense-form > button[type="button"] {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.expense-form > button[type="button"]:hover {
+  background: #e5e7eb;
+}
+
+/* Improve spacing between records */
+.expense-list li {
+  padding: 18px 0;
+  line-height: 1.6;
+}
+
+/* Consistent Edit and Delete buttons */
+.edit-button,
+.delete-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  margin-top: 8px;
+  margin-left: 8px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+/* Visible keyboard focus */
+.expense-form button:focus-visible,
+.edit-button:focus-visible,
+.delete-button:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+/* Better layout on smaller screens */
+@media (max-width: 700px) {
+  .expense-form > button {
+    width: 100%;
+  }
+
+  .expense-form-section,
+  .expense-list-section,
+  .category-section {
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .edit-button,
+  .delete-button {
+    margin-top: 10px;
+  }
+}
+
+/* Keep form action buttons together below the input fields */
+.expense-form > .form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.expense-form > .form-actions > button {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.expense-form > .form-actions > button[type="submit"]:hover {
+  background: #1d4ed8;
+}
+
+.expense-form > .form-actions > button[type="button"] {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.expense-form > .form-actions > button[type="button"]:hover {
+  background: #e5e7eb;
+}
+
+@media (max-width: 700px) {
+  .expense-form > .form-actions {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .expense-form > .form-actions > button {
+    width: auto;
+  }
+}

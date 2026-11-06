@@ -7,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 
 from backend.database import Base, get_db
 from backend.main import app
+from datetime import date, timedelta
 
 
 @pytest.fixture
@@ -195,3 +196,49 @@ def test_delete_expense(client):
     get_response = client.get(f"/expenses/{expense_id}")
 
     assert get_response.status_code == 404
+
+
+def test_reject_future_expense_date_on_create(client):
+    future_date = (date.today() + timedelta(days=1)).isoformat()
+
+    new_expense = {
+        "name": "Future groceries",
+        "amount": 45.50,
+        "category": "food",
+        "date": future_date,
+    }
+
+    response = client.post("/expenses", json=new_expense)
+
+    assert response.status_code == 422
+    assert client.get("/expenses").json() == []
+
+
+def test_reject_future_expense_date_on_update(client):
+    original_expense = {
+        "name": "Groceries",
+        "amount": 45.50,
+        "category": "food",
+        "date": "2026-11-04",
+    }
+
+    create_response = client.post("/expenses", json=original_expense)
+    assert create_response.status_code == 201
+
+    expense_id = create_response.json()["id"]
+
+    updated_expense = {
+        **original_expense,
+        "date": (date.today() + timedelta(days=1)).isoformat(),
+    }
+
+    response = client.put(
+        f"/expenses/{expense_id}",
+        json=updated_expense,
+    )
+
+    assert response.status_code == 422
+
+    saved_expense = client.get(f"/expenses/{expense_id}")
+    assert saved_expense.status_code == 200
+    assert saved_expense.json()["date"] == original_expense["date"]
