@@ -36,3 +36,7 @@ frontend/test-results/
 frontend/playwright-report/
 frontend/blob-report/
 frontend/playwright/.cache/
+
+# Local development databases
+backend/finance_dev.db
+backend/finance_week11_dev.db

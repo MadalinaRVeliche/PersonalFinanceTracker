@@ -1,5 +1,11 @@
 import { beforeEach, afterEach, expect, test, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import App from "./App";
 
 beforeEach(() => {
@@ -38,6 +44,14 @@ test("displays the Personal Finance Tracker title", async () => {
             access_token: "test-jwt-token",
             token_type: "bearer",
           }),
+        };
+      }
+
+      if (url.endsWith("/incomes")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [],
         };
       }
 
@@ -160,6 +174,21 @@ test("calculates the remaining balance correctly", async () => {
         };
       }
 
+      if (url.endsWith("/incomes")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [
+            {
+              id: 1,
+              name: "Salary",
+              amount: "3500.00",
+              date: "2026-11-01",
+            },
+          ],
+        };
+      }
+
       if (url.endsWith("/expenses")) {
         return {
           ok: true,
@@ -185,7 +214,7 @@ test("calculates the remaining balance correctly", async () => {
     target: { value: "2026-11" },
   });
 
-  expect(await screen.findByText("$1800.00")).toBeTruthy();
+  expect(await screen.findByText("$2300.00")).toBeTruthy();
 });
 
 test("displays an error when the API request fails", async () => {
@@ -202,6 +231,13 @@ test("displays an error when the API request fails", async () => {
         };
       }
 
+      if (url.endsWith("/incomes")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [],
+        };
+      }
       if (url.endsWith("/expenses")) {
         throw new Error("Network connection failed");
       }
@@ -230,6 +266,14 @@ test("sends a POST request when adding an expense", async () => {
             access_token: "test-jwt-token",
             token_type: "bearer",
           }),
+        };
+      }
+
+      if (url.endsWith("/incomes")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [],
         };
       }
 
@@ -262,15 +306,15 @@ test("sends a POST request when adding an expense", async () => {
 
   await signInForTest();
 
-  fireEvent.change(screen.getByLabelText(/name:/i), {
+  fireEvent.change(screen.getByLabelText(/^Name:/i), {
     target: { value: "Coffee" },
   });
 
-  fireEvent.change(screen.getByLabelText(/amount:/i), {
+  fireEvent.change(screen.getByLabelText(/^Amount:/i), {
     target: { value: "5" },
   });
 
-  fireEvent.change(screen.getByLabelText(/date:/i), {
+  fireEvent.change(screen.getByLabelText(/^Date:/i), {
     target: { value: "2026-11-04" },
   });
 
@@ -307,6 +351,14 @@ test("sends a DELETE request when deleting an expense", async () => {
             access_token: "test-jwt-token",
             token_type: "bearer",
           }),
+        };
+      }
+
+      if (url.endsWith("/incomes")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [],
         };
       }
 
@@ -367,6 +419,14 @@ test("sends a PUT request when editing an expense", async () => {
         };
       }
 
+      if (url.endsWith("/incomes")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [],
+        };
+      }
+
       if (url.endsWith("/expenses/1") && options?.method === "PUT") {
         return {
           ok: true,
@@ -408,7 +468,7 @@ test("sends a PUT request when editing an expense", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Edit" }));
 
-  fireEvent.change(screen.getByLabelText(/amount:/i), {
+  fireEvent.change(screen.getByLabelText(/^Amount:/i), {
     target: { value: "10" },
   });
 
@@ -533,4 +593,242 @@ test("restores the login session after remounting", async () => {
       },
     }),
   );
+});
+
+test("adds income and updates the monthly balance", async () => {
+  const newIncome = {
+    id: 1,
+    name: "Salary",
+    amount: "3500.00",
+    date: "2026-11-05",
+  };
+
+  const fetchMock = vi.fn(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url.endsWith("/login")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            access_token: "test-token",
+            token_type: "bearer",
+          }),
+        };
+      }
+
+      if (url.endsWith("/expenses")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [],
+        };
+      }
+
+      if (url.endsWith("/incomes") && init?.method === "POST") {
+        return {
+          ok: true,
+          status: 201,
+          json: async () => newIncome,
+        };
+      }
+
+      if (url.endsWith("/incomes")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [],
+        };
+      }
+
+      throw new Error(`Unexpected API request: ${url}`);
+    },
+  );
+
+  vi.stubGlobal("fetch", fetchMock);
+
+  render(<App />);
+
+  await signInForTest();
+
+  fireEvent.change(screen.getByLabelText(/^Income name:/i), {
+    target: { value: "Salary" },
+  });
+
+  fireEvent.change(screen.getByLabelText(/^Income amount:/i), {
+    target: { value: "3500" },
+  });
+
+  fireEvent.change(screen.getByLabelText(/^Income date:/i), {
+    target: { value: "2026-11-05" },
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "Add Income" }));
+
+  expect(await screen.findByText(/Salary — \$3500\.00/)).toBeTruthy();
+
+  const postCall = fetchMock.mock.calls.find(
+    ([url, options]) =>
+      String(url).endsWith("/incomes") && options?.method === "POST",
+  );
+
+  expect(postCall).toBeDefined();
+  expect(JSON.parse(postCall![1]!.body as string)).toEqual({
+    name: "Salary",
+    amount: "3500",
+    date: "2026-11-05",
+  });
+
+  expect(screen.getAllByText("$3500.00")).toHaveLength(2);
+});
+
+test("sends a DELETE request when deleting income", async () => {
+  const existingIncome = {
+    id: 7,
+    name: "Freelance",
+    amount: "500.00",
+    date: "2026-11-05",
+  };
+
+  const fetchMock = vi.fn(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url.endsWith("/expenses")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [],
+        };
+      }
+
+      if (url.endsWith("/incomes/7") && init?.method === "DELETE") {
+        return {
+          ok: true,
+          status: 204,
+        };
+      }
+
+      if (url.endsWith("/incomes")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [existingIncome],
+        };
+      }
+
+      throw new Error(`Unexpected API request: ${url}`);
+    },
+  );
+
+  vi.stubGlobal("fetch", fetchMock);
+  sessionStorage.setItem("accessToken", "test-token");
+
+  render(<App />);
+
+  fireEvent.change(screen.getByLabelText(/Select month/i), {
+    target: { value: "2026-11" },
+  });
+
+  expect(await screen.findByText(/Freelance — \$500\.00/)).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: "Delete Income" }));
+
+  await waitFor(() => {
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, options]) =>
+          String(url).endsWith("/incomes/7") && options?.method === "DELETE",
+      ),
+    ).toBe(true);
+
+    expect(screen.queryByText(/Freelance — \$500\.00/)).toBeNull();
+  });
+});
+
+test("edits an existing income and updates the dashboard", async () => {
+  const existingIncome = {
+    id: 7,
+    name: "Freelance",
+    amount: "500.00",
+    date: "2026-11-05",
+  };
+
+  const updatedIncome = {
+    ...existingIncome,
+    name: "Consulting",
+    amount: "750.00",
+  };
+
+  const fetchMock = vi.fn(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url.endsWith("/expenses")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [],
+        };
+      }
+
+      if (url.endsWith("/incomes/7") && init?.method === "PUT") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => updatedIncome,
+        };
+      }
+
+      if (url.endsWith("/incomes")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [existingIncome],
+        };
+      }
+
+      throw new Error(`Unexpected API request: ${url}`);
+    },
+  );
+
+  vi.stubGlobal("fetch", fetchMock);
+  sessionStorage.setItem("accessToken", "test-token");
+
+  render(<App />);
+
+  fireEvent.change(screen.getByLabelText(/Select month/i), {
+    target: { value: "2026-11" },
+  });
+
+  expect(await screen.findByText(/Freelance — \$500\.00/)).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: "Edit Income" }));
+
+  fireEvent.change(screen.getByLabelText(/Income name:/i), {
+    target: { value: "Consulting" },
+  });
+
+  fireEvent.change(screen.getByLabelText(/Income amount:/i), {
+    target: { value: "750.00" },
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "Save Income Changes" }));
+
+  await waitFor(() => {
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, options]) =>
+          String(url).endsWith("/incomes/7") &&
+          options?.method === "PUT" &&
+          JSON.parse(String(options.body)).name === "Consulting" &&
+          JSON.parse(String(options.body)).amount === "750.00",
+      ),
+    ).toBe(true);
+  });
+
+  expect(await screen.findByText(/Consulting — \$750\.00/)).toBeTruthy();
+
+  expect(screen.queryByText(/Freelance — \$500\.00/)).toBeNull();
 });

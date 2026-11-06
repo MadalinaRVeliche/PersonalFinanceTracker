@@ -11,11 +11,19 @@ type Expense = {
   date: string;
 };
 
+type Income = {
+  id: number;
+  name: string;
+  amount: number | string;
+  date: string;
+};
+
 function App() {
   const [accessToken, setAccessToken] = useState<string | null>(() =>
     sessionStorage.getItem("accessToken"),
   );
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [incomes, setIncomes] = useState<Income[]>([]);
   const [error, setError] = useState("");
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -31,7 +39,20 @@ function App() {
   const [category, setCategory] = useState("Food");
   const [date, setDate] = useState("");
   const [editingExpenseId, setEditingExpenseId] = useState<number | null>(null);
-  const income = 3000;
+
+  const [incomeName, setIncomeName] = useState("");
+  const [incomeAmount, setIncomeAmount] = useState("");
+  const [incomeDate, setIncomeDate] = useState("");
+  const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null);
+
+  const filteredIncomes = incomes.filter((income) =>
+    income.date.startsWith(selectedMonth),
+  );
+
+  const income = filteredIncomes.reduce(
+    (total, item) => total + Number(item.amount),
+    0,
+  );
 
   const filteredExpenses = expenses.filter((expense) =>
     expense.date.startsWith(selectedMonth),
@@ -70,6 +91,7 @@ function App() {
           sessionStorage.removeItem("accessToken");
           setAccessToken(null);
           setExpenses([]);
+          setIncomes([]);
           setError("");
           return;
         }
@@ -85,7 +107,39 @@ function App() {
         setError("Could not load expenses from FastAPI.");
       }
     }
-    loadExpenses();
+
+    async function loadIncomes() {
+      try {
+        const response = await fetch(`${API_URL}/incomes`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (response.status === 401) {
+          sessionStorage.removeItem("accessToken");
+          setAccessToken(null);
+          setExpenses([]);
+          setIncomes([]);
+          setError("");
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP error: ${response.status}`);
+        }
+
+        const data: Income[] = await response.json();
+        setIncomes(data);
+      } catch (err) {
+        console.error("Could not load incomes:", err);
+        setError("Could not load incomes from FastAPI.");
+      }
+    }
+    if (accessToken) {
+      loadExpenses();
+      loadIncomes();
+    }
   }, [accessToken]);
 
   async function handleSaveExpense(event: React.SubmitEvent<HTMLFormElement>) {
@@ -162,10 +216,133 @@ function App() {
     }
   }
 
+  async function handleSaveIncome(event: React.SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const trimmedName = incomeName.trim();
+    const numericAmount = Number(incomeAmount);
+
+    if (
+      !trimmedName ||
+      !incomeDate ||
+      !Number.isFinite(numericAmount) ||
+      numericAmount <= 0 ||
+      !/^\d+(\.\d{1,2})?$/.test(incomeAmount)
+    ) {
+      setError("Please enter a valid income name, amount, and date.");
+      return;
+    }
+
+    try {
+      setError("");
+
+      const isEditing = editingIncomeId !== null;
+
+      const response = await fetch(
+        isEditing
+          ? `${API_URL}/incomes/${editingIncomeId}`
+          : `${API_URL}/incomes`,
+        {
+          method: isEditing ? "PUT" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            name: trimmedName,
+            amount: incomeAmount,
+            date: incomeDate,
+          }),
+        },
+      );
+
+      if (response.status === 401) {
+        sessionStorage.removeItem("accessToken");
+        setAccessToken(null);
+        setExpenses([]);
+        setIncomes([]);
+        setError("");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+
+      const savedIncome: Income = await response.json();
+
+      setIncomes((previous) =>
+        isEditing
+          ? previous.map((item) =>
+              item.id === savedIncome.id ? savedIncome : item,
+            )
+          : [...previous, savedIncome],
+      );
+
+      setEditingIncomeId(null);
+      setIncomeName("");
+      setIncomeAmount("");
+      setIncomeDate("");
+    } catch (err) {
+      console.error("Could not save income:", err);
+      setError("Could not save income. Please try again.");
+    }
+  }
+
   function handleLogin(token: string) {
     sessionStorage.setItem("accessToken", token);
     setAccessToken(token);
     setError("");
+  }
+
+  async function handleDeleteIncome(incomeId: number) {
+    try {
+      setError("");
+
+      const response = await fetch(`${API_URL}/incomes/${incomeId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (response.status === 401) {
+        sessionStorage.removeItem("accessToken");
+        setAccessToken(null);
+        setExpenses([]);
+        setIncomes([]);
+        setError("");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+
+      setIncomes((previous) => previous.filter((item) => item.id !== incomeId));
+
+      if (editingIncomeId === incomeId) {
+        handleCancelIncomeEdit();
+      }
+    } catch (err) {
+      console.error("Could not delete income:", err);
+      setError("Could not delete income. Please try again.");
+    }
+  }
+
+  function handleEditIncome(item: Income) {
+    setEditingIncomeId(item.id);
+    setIncomeName(item.name);
+    setIncomeAmount(String(item.amount));
+    setIncomeDate(item.date);
+    setError("");
+  }
+
+  function handleCancelIncomeEdit() {
+    setEditingIncomeId(null);
+    setIncomeName("");
+    setIncomeAmount("");
+    setIncomeDate("");
   }
 
   async function handleDeleteExpense(expenseId: number) {
@@ -322,6 +499,87 @@ function App() {
               );
             })}
           </div>
+        )}
+      </section>
+
+      <section className="expense-form-section">
+        <h2>{editingIncomeId === null ? "Add Income" : "Edit Income"}</h2>
+
+        <form className="expense-form" onSubmit={handleSaveIncome}>
+          <div>
+            <label htmlFor="income-name">Income name: </label>
+            <input
+              id="income-name"
+              type="text"
+              value={incomeName}
+              onChange={(event) => setIncomeName(event.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="income-amount">Income amount: </label>
+            <input
+              id="income-amount"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={incomeAmount}
+              onChange={(event) => setIncomeAmount(event.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="income-date">Income date: </label>
+            <input
+              id="income-date"
+              type="date"
+              value={incomeDate}
+              onChange={(event) => setIncomeDate(event.target.value)}
+              required
+            />
+          </div>
+
+          <button type="submit">
+            {editingIncomeId === null ? "Add Income" : "Save Income Changes"}
+          </button>
+
+          {editingIncomeId !== null && (
+            <button type="button" onClick={handleCancelIncomeEdit}>
+              Cancel Income Edit
+            </button>
+          )}
+        </form>
+      </section>
+
+      <section className="expense-list-section">
+        <h2>Recent Income</h2>
+
+        {filteredIncomes.length === 0 ? (
+          <p>No income found for this month.</p>
+        ) : (
+          <ul className="expense-list">
+            {filteredIncomes.map((item) => (
+              <li key={item.id}>
+                {item.name} — ${Number(item.amount).toFixed(2)} ({item.date}){" "}
+                <button
+                  type="button"
+                  className="edit-button"
+                  onClick={() => handleEditIncome(item)}
+                >
+                  Edit Income
+                </button>{" "}
+                <button
+                  type="button"
+                  className="delete-button"
+                  onClick={() => handleDeleteIncome(item.id)}
+                >
+                  Delete Income
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

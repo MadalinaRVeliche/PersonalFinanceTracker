@@ -7,10 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.database import Base, engine, get_db
-from backend.models import Expense, User
+from backend.models import Expense, Income, User
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from decimal import Decimal
 
 from backend.security import (
     hash_password,
@@ -47,6 +48,18 @@ class ExpenseCreate(BaseModel):
 
 
 class ExpenseResponse(ExpenseCreate):
+    id: int
+
+    model_config = {"from_attributes": True}
+
+
+class IncomeCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+    date: date
+
+
+class IncomeResponse(IncomeCreate):
     id: int
 
     model_config = {"from_attributes": True}
@@ -251,6 +264,103 @@ def login_user(credentials: UserLogin, db: DBSession):
     access_token = create_access_token(user.id)
 
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.get("/incomes", response_model=list[IncomeResponse])
+def get_incomes(
+    db: DBSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    return db.scalars(
+        select(Income).where(Income.owner_id == current_user.id).order_by(Income.id)
+    ).all()
+
+
+@app.post("/incomes", response_model=IncomeResponse, status_code=201)
+def create_income(
+    income: IncomeCreate,
+    db: DBSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    new_income = Income(
+        **income.model_dump(),
+        owner_id=current_user.id,
+    )
+
+    db.add(new_income)
+    db.commit()
+    db.refresh(new_income)
+
+    return new_income
+
+
+@app.get("/incomes/{income_id}", response_model=IncomeResponse)
+def get_income(
+    income_id: int,
+    db: DBSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    income = db.scalar(
+        select(Income).where(
+            Income.id == income_id,
+            Income.owner_id == current_user.id,
+        )
+    )
+
+    if income is None:
+        raise HTTPException(status_code=404, detail="Income not found")
+
+    return income
+
+
+@app.put("/incomes/{income_id}", response_model=IncomeResponse)
+def update_income(
+    income_id: int,
+    updated_income: IncomeCreate,
+    db: DBSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    income = db.scalar(
+        select(Income).where(
+            Income.id == income_id,
+            Income.owner_id == current_user.id,
+        )
+    )
+
+    if income is None:
+        raise HTTPException(status_code=404, detail="Income not found")
+
+    for field, value in updated_income.model_dump().items():
+        setattr(income, field, value)
+
+    db.commit()
+    db.refresh(income)
+
+    return income
+
+
+@app.delete("/incomes/{income_id}", response_model=IncomeResponse)
+def delete_income(
+    income_id: int,
+    db: DBSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    income = db.scalar(
+        select(Income).where(
+            Income.id == income_id,
+            Income.owner_id == current_user.id,
+        )
+    )
+
+    if income is None:
+        raise HTTPException(status_code=404, detail="Income not found")
+
+    response = IncomeResponse.model_validate(income)
+
+    db.delete(income)
+    db.commit()
+
+    return response
 
 
 @app.get("/me", response_model=UserResponse)
