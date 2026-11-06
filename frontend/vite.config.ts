@@ -13,4 +13,7 @@ export default defineConfig(({ mode }) => ({
         },
       }
     : {}),
+  test: {
+    exclude: ["**/node_modules/**", "**/e2e/**"],
+  },
 }));

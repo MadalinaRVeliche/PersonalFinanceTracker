@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from "react";
-import { loginUser } from "./auth";
+import { loginUser, registerUser } from "./auth";
 
 type LoginProps = {
   onLogin: (token: string) => void;
 };
 
 export default function Login({ onLogin }: LoginProps) {
+  const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -17,20 +18,34 @@ export default function Login({ onLogin }: LoginProps) {
     setLoading(true);
 
     try {
+      if (isRegistering) {
+        await registerUser(email, password);
+      }
+
       const result = await loginUser(email, password);
       onLogin(result.access_token);
-    } catch {
-      setError("Login failed. Please check your email and password.");
+    } catch (err) {
+      if (isRegistering && err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Login failed. Please check your email and password.");
+      }
     } finally {
       setLoading(false);
     }
+  }
+
+  function toggleMode() {
+    setIsRegistering((current) => !current);
+    setError("");
+    setPassword("");
   }
 
   return (
     <main className="login-page">
       <form className="login-form" onSubmit={handleSubmit}>
         <h1>Personal Finance Tracker</h1>
-        <h2>Sign in</h2>
+        <h2>{isRegistering ? "Create account" : "Sign in"}</h2>
 
         <label htmlFor="login-email">Email</label>
         <input
@@ -49,13 +64,32 @@ export default function Login({ onLogin }: LoginProps) {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           required
-          autoComplete="current-password"
+          minLength={isRegistering ? 8 : undefined}
+          autoComplete={isRegistering ? "new-password" : "current-password"}
         />
+
+        {isRegistering && <p>Use at least 8 characters for your password.</p>}
 
         {error && <p role="alert">{error}</p>}
 
         <button type="submit" disabled={loading}>
-          {loading ? "Signing in..." : "Sign in"}
+          {loading
+            ? isRegistering
+              ? "Creating account..."
+              : "Signing in..."
+            : isRegistering
+              ? "Create account"
+              : "Sign in"}
+        </button>
+
+        <p>
+          {isRegistering
+            ? "Already have an account?"
+            : "Don't have an account?"}
+        </p>
+
+        <button type="button" onClick={toggleMode} disabled={loading}>
+          {isRegistering ? "Back to sign in" : "Create an account"}
         </button>
       </form>
     </main>
