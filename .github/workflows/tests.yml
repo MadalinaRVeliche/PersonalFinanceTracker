@@ -25,6 +25,7 @@ jobs:
       - name: Run backend tests
         env:
           JWT_SECRET_KEY: github-actions-test-secret-not-for-production
+          DEMO_RATE_LIMIT_SECRET: github-actions-demo-secret-not-for-production
           DATABASE_URL: "sqlite:///./github_actions_test.db"
         run: python -m pytest backend -q
 

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { loginUser, registerUser } from "./auth";
+import { loginUser, registerUser, createDemoSession } from "./auth";
 
 type LoginProps = {
   onLogin: (token: string) => void;
@@ -39,6 +39,24 @@ export default function Login({ onLogin }: LoginProps) {
     setIsRegistering((current) => !current);
     setError("");
     setPassword("");
+  }
+
+  async function handleDemo() {
+    setError("");
+    setLoading(true);
+
+    try {
+      const token = await createDemoSession();
+      onLogin(token);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not start the demo. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -90,6 +108,14 @@ export default function Login({ onLogin }: LoginProps) {
 
         <button type="button" onClick={toggleMode} disabled={loading}>
           {isRegistering ? "Back to sign in" : "Create an account"}
+        </button>
+        <button
+          type="button"
+          onClick={handleDemo}
+          disabled={loading}
+          className="demo-button"
+        >
+          {loading ? "Please wait..." : "Try Demo — No Account Needed"}
         </button>
       </form>
     </main>

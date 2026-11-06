@@ -52,3 +52,18 @@ export async function registerUser(
 
   return response.json();
 }
+export async function createDemoSession(): Promise<string> {
+  const response = await fetch(`${API_URL}/demo`,
+    { method: "POST" }
+  );
+
+  if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error("Demo limit reached. Please try again later.");
+    }
+    throw new Error("Could not start the demo. Please try again.");
+  }
+
+  const data: { access_token: string } = await response.json();
+  return data.access_token;
+}

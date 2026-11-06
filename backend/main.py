@@ -1,17 +1,23 @@
-from datetime import date
+import secrets
+from datetime import date, datetime, timedelta, timezone
 from typing import Annotated
 
+from fastapi import Request
+
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from decimal import Decimal
+from backend.demo_cleanup import cleanup_expired_demo_accounts
+
 from backend.database import Base, engine, get_db
 from backend.models import Expense, Income, User
-
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from decimal import Decimal
 
 from backend.security import (
     hash_password,
@@ -19,6 +25,8 @@ from backend.security import (
     create_access_token,
     decode_access_token,
 )
+
+from backend.demo_rate_limit import check_demo_rate_limit
 
 app = FastAPI()
 
@@ -137,6 +145,24 @@ def get_current_user(
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    if user.is_demo:
+        expires_at = user.demo_expires_at
+
+        if expires_at is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Demo session expired",
+            )
+
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+        if expires_at <= datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=401,
+                detail="Demo session expired",
+            )
 
     return user
 
@@ -278,6 +304,92 @@ def login_user(credentials: UserLogin, db: DBSession):
     access_token = create_access_token(user.id)
 
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.post("/demo", response_model=TokenResponse, status_code=201)
+def create_demo_session(request: Request, db: DBSession):
+    cleanup_expired_demo_accounts(db)
+
+    client_ip = request.client.host if request.client else "unknown"
+    check_demo_rate_limit(db, client_ip)
+
+    demo_id = secrets.token_hex(16)
+    demo_user = User(
+        email=f"demo-{demo_id}@example.invalid",
+        hashed_password=hash_password(secrets.token_urlsafe(32)),
+        is_demo=True,
+        demo_expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+    )
+
+    db.add(demo_user)
+    db.flush()
+
+    today = date.today()
+    month_start = today.replace(day=1)
+
+    sample_incomes = [
+        Income(
+            name="Monthly Salary",
+            amount=Decimal("3500.00"),
+            date=month_start,
+            owner_id=demo_user.id,
+        ),
+        Income(
+            name="Freelance Project",
+            amount=Decimal("650.00"),
+            date=month_start,
+            owner_id=demo_user.id,
+        ),
+    ]
+
+    sample_expenses = [
+        Expense(
+            name="Apartment Rent",
+            amount=950.00,
+            category="Housing",
+            date=month_start,
+            owner_id=demo_user.id,
+        ),
+        Expense(
+            name="Groceries",
+            amount=185.50,
+            category="Food",
+            date=month_start,
+            owner_id=demo_user.id,
+        ),
+        Expense(
+            name="Public Transport",
+            amount=45.00,
+            category="Transport",
+            date=month_start,
+            owner_id=demo_user.id,
+        ),
+        Expense(
+            name="Streaming Subscription",
+            amount=14.99,
+            category="Entertainment",
+            date=month_start,
+            owner_id=demo_user.id,
+        ),
+        Expense(
+            name="Coffee Shop",
+            amount=18.50,
+            category="Food",
+            date=month_start,
+            owner_id=demo_user.id,
+        ),
+    ]
+
+    db.add_all(sample_incomes + sample_expenses)
+    db.commit()
+    db.refresh(demo_user)
+
+    access_token = create_access_token(demo_user.id)
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
 
 
 @app.get("/incomes", response_model=list[IncomeResponse])
