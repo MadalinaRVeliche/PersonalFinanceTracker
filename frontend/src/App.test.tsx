@@ -1,6 +1,10 @@
-import { afterEach, expect, test, vi } from "vitest";
+import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import App from "./App";
+
+beforeEach(() => {
+  sessionStorage.clear();
+});
 
 afterEach(() => {
   cleanup();
@@ -499,4 +503,34 @@ test("logging out returns the user to the sign-in screen", async () => {
       name: /my personal finance tracker/i,
     }),
   ).toBeNull();
+});
+
+test("restores the login session after remounting", async () => {
+  sessionStorage.setItem("accessToken", "saved-test-token");
+
+  const mockFetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => [],
+  });
+
+  vi.stubGlobal("fetch", mockFetch);
+
+  render(<App />);
+
+  expect(
+    await screen.findByRole("heading", {
+      name: /my personal finance tracker/i,
+    }),
+  ).toBeTruthy();
+
+  expect(screen.queryByLabelText("Email")).toBeNull();
+
+  expect(mockFetch).toHaveBeenCalledWith(
+    "http://127.0.0.1:8000/expenses",
+    expect.objectContaining({
+      headers: {
+        Authorization: "Bearer saved-test-token",
+      },
+    }),
+  );
 });

@@ -12,7 +12,9 @@ type Expense = {
 };
 
 function App() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(() =>
+    sessionStorage.getItem("accessToken"),
+  );
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [error, setError] = useState("");
 
@@ -65,6 +67,7 @@ function App() {
         });
 
         if (response.status === 401) {
+          sessionStorage.removeItem("accessToken");
           setAccessToken(null);
           setExpenses([]);
           setError("");
@@ -125,6 +128,7 @@ function App() {
       });
 
       if (response.status === 401) {
+        sessionStorage.removeItem("accessToken");
         setAccessToken(null);
         setExpenses([]);
         setError("");
@@ -158,6 +162,12 @@ function App() {
     }
   }
 
+  function handleLogin(token: string) {
+    sessionStorage.setItem("accessToken", token);
+    setAccessToken(token);
+    setError("");
+  }
+
   async function handleDeleteExpense(expenseId: number) {
     const confirmed = window.confirm(
       "Are you sure you want to delete this expense?",
@@ -178,6 +188,7 @@ function App() {
       });
 
       if (response.status === 401) {
+        sessionStorage.removeItem("accessToken");
         setAccessToken(null);
         setExpenses([]);
         setError("");
@@ -216,7 +227,7 @@ function App() {
   }
 
   if (!accessToken) {
-    return <Login onLogin={setAccessToken} />;
+    return <Login onLogin={handleLogin} />;
   }
 
   return (
@@ -233,6 +244,7 @@ function App() {
           <button
             type="button"
             onClick={() => {
+              sessionStorage.removeItem("accessToken");
               setAccessToken(null);
               setExpenses([]);
               setError("");
