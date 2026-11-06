@@ -33,6 +33,7 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
+
 bearer_scheme = HTTPBearer(auto_error=False)
 
 app.add_middleware(
