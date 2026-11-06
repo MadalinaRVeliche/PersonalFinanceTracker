@@ -28,8 +28,6 @@ dist/
 .DS_Store
 Thumbs.db
 desktop.ini
-backend/finance.db
-backend/finance_backup.db
 
 # Playwright generated files
 frontend/test-results/
@@ -37,6 +35,7 @@ frontend/playwright-report/
 frontend/blob-report/
 frontend/playwright/.cache/
 
-# Local development databases
-backend/finance_dev.db
-backend/finance_week11_dev.db
+# Local SQLite databases
+*.db
+*.sqlite
+*.sqlite3
