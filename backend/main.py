@@ -25,10 +25,10 @@ from backend.security import (
     create_access_token,
     decode_access_token,
 )
-
+from backend.demo_scheduler import lifespan
 from backend.demo_rate_limit import check_demo_rate_limit
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
