@@ -1,10 +1,10 @@
-# Personal Finance Tracker
+﻿# Personal Finance Tracker
 
 A deployed full-stack web application for tracking income, expenses, and monthly financial activity, built with **React, TypeScript, Python, FastAPI, SQLAlchemy, and PostgreSQL**.
 
-**[Open the live application](https://personal-finance-tracker-ac7w.onrender.com)** · **[Explore the API documentation](https://personal-finance-api-m6we.onrender.com/docs)**
+**[Open the live application](https://personal-finance-tracker-ac7w.onrender.com)** Â· **[Explore the API documentation](https://personal-finance-api-m6we.onrender.com/docs)**
 
-> **Try it without registering:** Open the live application and select **Try Demo — No Account Needed**. A temporary account is created with fictional sample transactions so you can explore the dashboard and transaction management features. Demo sessions expire after **30 minutes**; expired demo data is automatically cleaned up while the backend is running.
+> **Try it without registering:** Open the live application and select **Try Demo â€” No Account Needed**. A temporary account is created with fictional sample transactions so you can explore the dashboard and transaction management features. Demo sessions expire after **30 minutes**; expired demo data is automatically cleaned up while the backend is running.
 >
 > **Hosting note:** The application runs on Render's free hosting tier, so the first request after inactivity may take a little longer.
 
@@ -106,7 +106,7 @@ python -m backend.add_demo_column
 python -m uvicorn backend.main:app --reload
 ```
 
-Backend: http://127.0.0.1:8000  
+Backend: http://127.0.0.1:8000
 API documentation: http://127.0.0.1:8000/docs
 
 > **Database safety:** Check your `DATABASE_URL` before running migrations or cleanup commands. The application's environment configuration can override the local SQLite setting; never run development commands against the production Neon database unintentionally.
@@ -172,8 +172,8 @@ The workflow at [`.github/workflows/tests.yml`](.github/workflows/tests.yml) inc
 
 ## Deployment
 
-- **Frontend:** Render — [Live application](https://personal-finance-tracker-ac7w.onrender.com)
-- **Backend:** Render, deployed with Docker — [Interactive API docs](https://personal-finance-api-m6we.onrender.com/docs)
+- **Frontend:** Render â€” [Live application](https://personal-finance-tracker-ac7w.onrender.com)
+- **Backend:** Render, deployed with Docker â€” [Interactive API docs](https://personal-finance-api-m6we.onrender.com/docs)
 - **Database:** Neon PostgreSQL
 
 The backend container runs the demo schema migration at startup. Automatic cleanup runs on startup and periodically while the backend is active. On Render's free tier, sleeping services do not run background tasks until they restart.
@@ -188,32 +188,32 @@ The original browser-based prototype remains in the repository as part of the de
 
 ### Moving from LocalStorage to a full-stack architecture
 
-**Challenge:** Browser-only storage did not provide server-side persistence or user-specific access.  
-**Solution:** Rebuilt the application around React, FastAPI, SQLAlchemy, and PostgreSQL.  
+**Challenge:** Browser-only storage did not provide server-side persistence or user-specific access.
+**Solution:** Rebuilt the application around React, FastAPI, SQLAlchemy, and PostgreSQL.
 **Lesson:** Designing and connecting a frontend, REST API, and relational database.
 
 ### Enforcing user-specific data access
 
-**Challenge:** Financial records must be accessible only to their owners.  
-**Solution:** Added authenticated endpoints, user-scoped database queries, and authorization tests.  
+**Challenge:** Financial records must be accessible only to their owners.
+**Solution:** Added authenticated endpoints, user-scoped database queries, and authorization tests.
 **Lesson:** Authorization must be enforced by the backend, not just the UI.
 
 ### Validating transaction dates
 
-**Challenge:** Users could submit future-dated income or expenses.  
-**Solution:** Added backend Pydantic validation, frontend date restrictions, and tests for create/update operations.  
+**Challenge:** Users could submit future-dated income or expenses.
+**Solution:** Added backend Pydantic validation, frontend date restrictions, and tests for create/update operations.
 **Lesson:** Important validation belongs on both client and server.
 
 ### Keeping tests isolated from production
 
-**Challenge:** Frontend test configuration initially pointed requests toward a deployed API.  
-**Solution:** Set a predictable test API URL and separated environment-specific configuration.  
+**Challenge:** Frontend test configuration initially pointed requests toward a deployed API.
+**Solution:** Set a predictable test API URL and separated environment-specific configuration.
 **Lesson:** Automated tests should be deterministic and isolated from production services.
 
 ### Deploying and maintaining a public demo
 
-**Challenge:** The deployed app needed a hosted database, separate frontend/backend services, and a safe way for visitors to explore features without registering.  
-**Solution:** Deployed the services on Render, used Neon PostgreSQL, added temporary seeded demo accounts, expiration, rate limiting, and automatic cleanup.  
+**Challenge:** The deployed app needed a hosted database, separate frontend/backend services, and a safe way for visitors to explore features without registering.
+**Solution:** Deployed the services on Render, used Neon PostgreSQL, added temporary seeded demo accounts, expiration, rate limiting, and automatic cleanup.
 **Lesson:** Production-ready demos require attention to data lifecycle, resource limits, and operational configuration.
 
 ## Potential Future Improvements
